@@ -20,12 +20,12 @@ def get_random_value(size):
     return x, y
 
 
-def write_info(x, y, time):
+def write_info(x, y, time,is_first):
     with open('cut_info.csv', 'a') as csvfile:
       fieldnames = ['x_axis', 'y_axis', 'time']
       writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-      writer.writeheader()
+      if is_first:
+        writer.writeheader()
       writer.writerow({'x_axis':x, 'y_axis':y, 'time':time})
 
 
@@ -37,7 +37,10 @@ def main(args):
        x_axis, y_axis = get_random_value(size)
        result = input("click? - ")
        cur_time = time.time() - start_time
-       write_info(x_axis, y_axis, cur_time)
+       if count == 0:
+         write_info(x_axis, y_axis, cur_time, True)
+       else:
+         write_info(x_axis, y_axis, cur_time, False)
 
 
 if __name__ == "__main__":
