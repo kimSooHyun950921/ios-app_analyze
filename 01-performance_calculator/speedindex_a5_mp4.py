@@ -13,8 +13,8 @@ import logging.config
 import xml.etree.ElementTree as ET
 from operator import itemgetter
 
-#XMLDIR = '/home/kimsoohyun/00-Research/02-Graph/AppSpeedXray/MobileAppTester/output/xml/'
 MP4DIR = '/home/kimsoohyun/00-Research/02-Graph/AppSpeedXray/MobileAppTester/output/mp4/test/'
+CUTFILE = '/home/kimsoohyun/00-Research/02-Graph/ios/00-UIAutomator/cut_info.csv'
 TEMPDIR = './a5-lte-init/'
 OUTPUTDIR = './output/'
 OUTPUTFILE = '190916-a5-ios-init-si.csv'
@@ -119,8 +119,17 @@ def write2csv(video_name, list_split_point, speed_list):
             writer.writerow([video_name, list_split_point[index], speed_list[index][0], speed_list[index][1]])
 
 
+
+def get_num_of_touch_event():
+    return len(list(csv.reader(open(CUTFILE))))  
+
 def get_cut_point(img_list):
-    print(cuts)
+    num_of_touch_event = get_num_of_touch_event()
+    cuts_t = list()
+    with open(CUTFILE,'r') as csvfile:
+      reader = csv.DictReader(csvfile, delimiter=",")
+      for row in reader:
+        cuts_t.append(row['time'])
     return cuts
 
 
