@@ -20,13 +20,15 @@ def get_random_value(size):
     return x, y
 
 
-def write_info(x, y, time,is_first):
-    with open('cut_info.csv', 'a') as csvfile:
-      fieldnames = ['x_axis', 'y_axis', 'time']
+def write_info(csv_name, x, y, time, loading_time, is_first):
+    file_name = csv_name+".csv"
+    with open(file_name, 'a') as csvfile:
+      fieldnames = ['x_axis', 'y_axis', 'time', 'loading-time']
       writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
       if is_first:
         writer.writeheader()
-      writer.writerow({'x_axis':x, 'y_axis':y, 'time':time})
+      writer.writerow({'x_axis':x, 'y_axis':y, \
+                       'time':time,'loading-time':loading_time})
 
 
 def main(args):
@@ -35,12 +37,19 @@ def main(args):
      start_time = time.time()
      for count in range(0, count):
        x_axis, y_axis = get_random_value(size)
+
+       loading_start_time = time.time()
        result = input("click? - ")
        cur_time = time.time() - start_time
+       loading_time = time.time() - loading_start_time
+
        if count == 0:
-         write_info(x_axis, y_axis, cur_time, True)
+         write_info(args.csv, x_axis, y_axis, cur_time, loading_time, True)
        else:
-         write_info(x_axis, y_axis, cur_time, False)
+         write_info(args.csv, x_axis, y_axis, cur_time, loading_time, False)
+
+       time.sleep(10)
+       print("SLEEP END")
 
 
 if __name__ == "__main__":
@@ -49,9 +58,13 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--name", 
                         required=True,
                         help="input name of iphone model")
+    parser.add_argument("-c", "--csv",
+                        required=True,
+                        help="input output csv name")
     parser.add_argument("-t", "--time",
                         required=True,
                         type=int,
                         help="set experiment time")
     args = parser.parse_args()
     main(args)
+
