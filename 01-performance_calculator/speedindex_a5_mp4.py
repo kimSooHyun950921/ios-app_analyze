@@ -100,7 +100,6 @@ def run_ffmpeg(video_name):
     except Exception as e:                                                      
         print(e)                                                                
         raise e                                                                 
-                                                                                
     return True                                                                 
                                                                                 
                                                                                 
@@ -120,48 +119,40 @@ def list_jpg(path):
     return result                                                      
                     
 
+def get_similarity_list(files_list):
+    list_similarity = []
 
-    return speed_index                                                          
-                                                                                
-                                                                                
-def run_ffmpeg(video_name):                                                     
-    try:                                                                        
-        os.makedirs(TEMPDIR + str(video_name), exist_ok = True)                 
-    except FileExistsError as e:                                                
-        print(e)                                                                
-    except Exception as e:                                                      
-        print(e)                                                                
-        raise e                                                                 
-                                                                                
-    # ffmpeg 실행                                                               
-    # LuHa: fps=2 로 변경                                                       
-    # command = 'ffmpeg -i ' + MP4DIR + str(video_name) + '.mp4 -vf fps=10 ' + TEMPDIR + str(video_name) + '/out%04d.jpg'
-    command = 'ffmpeg -i ' + MP4DIR + str(video_name) + '.mp4 -vf fps={0} '.format(FPS) + TEMPDIR + str(video_name) + '/out%04d.jpg'
-    try:                                                                        
-        ffmpeg = subprocess.check_call(command, stdout=subprocess.PIPE, shell=True)
-    except Exception as e:                                                      
-        print(e)                                                                
-        raise e                                                                 
-                                                                                
-    return True                                                                 
-                                                                                
-                                                                                
-def list_mp4(path):                                                             
-    result = []                                                                 
-    for f in os.listdir(path):                                                  
-        if f.endswith('.mp4'):                                                  
-          result.append(f.split('.mp4')[0])                                     
-    return result                                                               
-                                                                                
-                                                                                
-def list_jpg(path):                                                             
-    result = []                                                                 
-    for f in os.listdir(path):                                                  
-        if f.endswith('.jpg'):                                                  
-            result.append(path + f)                                             
-    return result  
+    for index in range(len(files_list)):
+        try:
+            image1 = io.imread(files_list[index])
+            image2 = io.imread(files_list[index+1])
+        except OSError as e:
+            continue
+        except IndexError as e:
+            continue
+        similarity = ssim(image1, image2, multichannel = True)
+        list_similarity.append((files_list[index], files_list[index+1], similarity))
+    return list_similarity
 
 
+def write2csv(video_name, list_split_point, speed_list):
+    with open(OUTPUTDIR+OUTPUTFILE, 'a') as f:
+        writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+        for index in range(0, len(speed_list)):
+            writer.writerow([video_name, list_split_point[index], speed_list[index][0], speed_list[index][1]])
+
+
+def get_num_of_touch_event():
+    return len(list(csv.reader(open(CUTFILE))))
+
+def get_cut_point(img_list):
+    num_of_touch_event = get_num_of_touch_event()
+    cuts_t = list()
+    with open(CUTFILE,'r') as csvfile:
+      reader = csv.DictReader(csvfile, delimiter=",")
+      for row in reader:
+        cuts_t.append(row['time'])
+    return cuts
 
 
 def main(args):                                                                     
