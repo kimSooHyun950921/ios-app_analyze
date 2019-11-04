@@ -18,7 +18,8 @@ CUTFILE = '/home/kimsoohyun/00-Research/02-Graph/ios/ios-app_analyze/00-UIAutoma
 TEMPDIR = './a5-lte-init/'                                                      
 OUTPUTDIR = './output/'                                                         
 OUTPUTFILE = '190929-a5-ios-init-si.csv'                                        
-FPS = 10                                                                        
+FPS = 10
+DEBUG = True
                                                                                 
 def get_event_time(get_event_list):                                             
     for index in range(to_index, from_index -1):                                
@@ -36,15 +37,27 @@ def get_event_time(get_event_list):
         break                                                                   
       return list_split_point                                                   
                                                                                 
-def sync(real_touch, record_time):                                              
-    '''sync: real touc와 record_time 의 sync를 맞추는 것                        
-       input: real_touch list, record_time list                                 
-       output: record_time list                                                 
                                                                                 
+def sync(jpg_list, cut_list):                                                   
+    sync_cut_point = list()                                                     
+    for index in range(0, len(cut_list)):                                       
+      cut_index = int(float(cut_list[index])*FPS)                               
+      if DEBUG: print("cut_index", cut_index)                                   
                                                                                 
-    '''                                                                         
+      for index in range(cut_index,len(jpg_list)):                              
+        sync_index = index                                                      
+        if DEBUG: print("sync_index", sync_index)                               
                                                                                 
-                                                                                                                                                             
+        image1 = io.imread(jpg_list[cut_index])                                 
+        image2 = io.imread(jpg_list[sync_index])                                
+        similarity = ssim(image1, image2, multichannel=True)                    
+        if DEBUG: print(similarity)                                             
+        if similarity < 0.9:                                                    
+          sync_cut_point.append(sync_index)                                     
+          break                                                                 
+    if DEBUG: print(sync_cut_point)                                             
+    return sync_cut_point
+
                                                                                 
 def get_split_point(files_list, cut_point):                                     
     list_split_point = list()                                                   
@@ -82,9 +95,9 @@ def get_speed_index(files_list, list_split_point):
     return speed_index                                                          
                                                                                 
                                                                                 
-def run_ffmpeg(video_name):                                                     
+def run_ffmpeg(MP4DIR, video_name, ext):                                                     
     try:                                                                        
-        os.makedirs(TEMPDIR + str(video_name), exist_ok = True)                 
+        os.makedirs(TEMPDIR +str(video_name), exist_ok = True)                 
     except FileExistsError as e:                                                
         print(e)                                                                
     except Exception as e:                                                      
@@ -94,7 +107,7 @@ def run_ffmpeg(video_name):
     # ffmpeg 실행                                                               
     # LuHa: fps=2 로 변경                                                       
     # command = 'ffmpeg -i ' + MP4DIR + str(video_name) + '.mp4 -vf fps=10 ' + TEMPDIR + str(video_name) + '/out%04d.jpg'
-    command = 'ffmpeg -i ' + MP4DIR + str(video_name) + '.mp4 -vf fps={0} '.format(FPS) + TEMPDIR + str(video_name) + '/out%04d.jpg'
+    command = 'ffmpeg -i ' + MP4DIR + str(video_name) + '.' + ext + ' -vf fps={0} '.format(FPS) + TEMPDIR + str(video_name) + '/out%04d.jpg'
     try:                                                                        
         ffmpeg = subprocess.check_call(command, stdout=subprocess.PIPE, shell=True)
     except Exception as e:                                                      
@@ -103,11 +116,13 @@ def run_ffmpeg(video_name):
     return True                                                                 
                                                                                 
                                                                                 
-def list_mp4(path):                                                             
+def list_mp4(path):
+    movie_ex_list = ['mp4', 'mkv']
     result = []                                                                 
-    for f in os.listdir(path):                                                  
-        if f.endswith('.mp4'):                                                  
-          result.append(f.split('.mp4')[0])                                     
+    for f in os.listdir(path):
+      for movie in movie_ex_list:
+        if f.endswith(movie):                                                  
+          result.append((f.split('.'+movie)[0], movie))                                     
     return result                                                               
                                                                                 
                                                                                 
@@ -142,32 +157,36 @@ def write2csv(video_name, list_split_point, speed_list):
             writer.writerow([video_name, list_split_point[index], speed_list[index][0], speed_list[index][1]])
 
 
-def get_num_of_touch_event():
-    return len(list(csv.reader(open(CUTFILE))))
+def get_num_of_touch_event(cut_file_path):
+    return len(list(csv.reader(open(cut_file_path))))
 
-def get_cut_point(img_list):
-    num_of_touch_event = get_num_of_touch_event()
+
+def get_cut_point(cut_file_path):
     cuts_t = list()
-    with open(CUTFILE,'r') as csvfile:
+    with open(cut_file_path,'r') as csvfile:
       reader = csv.DictReader(csvfile, delimiter=",")
       for row in reader:
         cuts_t.append(row['time'])
-    return cuts
+    return cuts_t
 
 
 def main(args):                                                                     
-                                                                                
-    mp4_list = list_mp4(MP4DIR)                                                 
-                                                                                
+    mp4_dir = MP4DIR + args.device+"/" 
+    cut_file = CUTFILE + args.device+"/"
+
+    mp4_list = list_mp4(mp4_dir)                                                 
+    print(MP4DIR+args.device)                                                                            
     os.makedirs(TEMPDIR, exist_ok = True)                                       
     os.makedirs(OUTPUTDIR, exist_ok = True)                                     
                                                                                 
-    cut_point = get_cut_point(files_list)                                       
+    cut_point = list()
+    #get_cut_point(CUTFILE+args.device)                                       
                                                                                 
-    for video_name in mp4_list:                                                 
-        print(video_name)                                                       
+    for video_name, ext in mp4_list:                                                 
+        if DEBUG: print("VIDEO NAME:", video_name, "EXT:", ext)                                       
+        cut_point = get_cut_point(cut_file+video_name+'.csv')                                       
         try:                                                                    
-            if not(run_ffmpeg(video_name)):                                     
+            if not(run_ffmpeg(mp4_dir, video_name, ext)):                                     
                 raise Exception                                                 
         except Exception as e:                                                  
             logging.error(video_name + ' : run_ffmpeg error')                   
@@ -175,9 +194,10 @@ def main(args):
         files_list = list_jpg(TEMPDIR+video_name+'/')                           
         files_list.sort()                                                       
                                                                                 
-                                                                                
-        print(cut_point[video_name])                                            
-        list_split_point = get_split_point(files_list, cut_point[video_name])   
+                                                                       
+        print(cut_point)
+        cut_point = sync(files_list, cut_point)
+        list_split_point = get_split_point(files_list, cut_point)   
         print(list_split_point)                                                 
         speed_list = get_speed_index(files_list, list_split_point)              
         print(speed_list)                                                       
@@ -189,7 +209,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='calculate speedindex')
     parser.add_argument('--device', '-d',
                         type=str,
+                        required=True,
                         help='input ios or android')
     args = parser.parse_args()
-    main(argrs)                                                                      
+    main(args)                                                                      
                                                                                                    
